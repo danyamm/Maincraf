@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anime 3D - Chicas Virtuales</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: white;
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
+            pointer-events: none;
+            font-size: 16px;
+            background: rgba(0,0,0,0.4);
+            padding: 10px 0;
+        }
+        #info span {
+            background: rgba(255,105,180,0.7);
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">🌸 <span>Haz clic en el suelo para que te sigan</span> 🌸</div>
+
+    <!-- Three.js desde CDN -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Escena, cámara, render ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // cielo azul claro
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(10, 8, 12);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // --- Controles de cámara (arrastrar con mouse) ---
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 1.5, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2.3;
+
+        // --- Luces ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(5, 10, 7);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        scene.add(dirLight);
+
+        const fillLight = new THREE.DirectionalLight(0xffccaa, 0.4);
+        fillLight.position.set(-5, 3, -5);
+        scene.add(fillLight);
+
+        // --- Suelo ---
+        const groundGeometry = new THREE.CircleGeometry(8, 32);
+        const groundMaterial = new THREE.MeshStandardMaterial({
+            color: 0xccddff,
+            roughness: 0.8,
+            metalness: 0.1,
+            transparent: true,
+            opacity: 0.9
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.01;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Césped decorativo (círculos verdes)
+        for (let i = 0; i < 60; i++) {
+            const patch = new THREE.Mesh(
+                new THREE.CircleGeometry(0.15 + Math.random() * 0.3, 6),
+                new THREE.MeshStandardMaterial({ color: 0x88dd88, roughness: 0.9 })
+            );
+            patch.rotation.x = -Math.PI / 2;
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 1.5 + Math.random() * 6;
+            patch.position.set(Math.cos(angle) * radius, -0.005, Math.sin(angle) * radius);
+            scene.add(patch);
+        }
+
+        // --- Crear personaje anime (chica) ---
+        function createAnimeGirl(color = 0xff69b4, hairColor = 0xffaa00, skinColor = 0xffddbb) {
+            const group = new THREE.Group();
+
+            // Cuerpo (vestido)
+            const bodyGeo = new THREE.CylinderGeometry(0.6, 0.9, 1.2, 8);
+            const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.3, emissive: new THREE.Color(color).multiplyScalar(0.1) });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.6;
+            body.castShadow = true;
+            group.add(body);
+
+            // Cabeza
+            const headGeo = new THREE.SphereGeometry(0.45, 16, 16);
+            const headMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.4 });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 1.35;
+            head.castShadow = true;
+            group.add(head);
+
+            // Ojos (blanco)
+            const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            const eyeWhiteGeo = new THREE.SphereGeometry(0.12, 8, 8);
+            const eyeL = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+            eyeL.position.set(-0.18, 1.45, 0.38);
+            group.add(eyeL);
+            const eyeR = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+            eyeR.position.set(0.18, 1.45, 0.38);
+            group.add(eyeR);
+
+            // Pupilas
+            const pupilMat = new THREE.MeshStandardMaterial({ color: 0x222244, emissive: 0x000088, emissiveIntensity: 0.2 });
+            const pupilGeo = new THREE.SphereGeometry(0.06, 8, 8);
+            const pupilL = new THREE.Mesh(pupilGeo, pupilMat);
+            pupilL.position.set(-0.18, 1.43, 0.48);
+            group.add(pupilL);
+            const pupilR = new THREE.Mesh(pupilGeo, pupilMat);
+            pupilR.position.set(0.18, 1.43, 0.48);
+            group.add(pupilR);
+
+            // Brillo ojos
+            const glowMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.3 });
+            const glowGeo = new THREE.SphereGeometry(0.025, 6, 6);
+            const glowL = new THREE.Mesh(glowGeo, glowMat);
+            glowL.position.set(-0.15, 1.47, 0.50);
+            group.add(glowL);
+            const glowR = new THREE.Mesh(glowGeo, glowMat);
+            glowR.position.set(0.21, 1.47, 0.50);
+            group.add(glowR);
+
+            // Boca (sonrisa)
+            const mouthMat = new THREE.MeshStandardMaterial({ color: 0xcc6666 });
+            const mouthGeo = new THREE.TorusGeometry(0.06, 0.02, 6, 12, Math.PI);
+            const mouth = new THREE.Mesh(mouthGeo, mouthMat);
+            mouth.position.set(0, 1.32, 0.42);
+            mouth.rotation.x = 0.1;
+            mouth.rotation.z = 0.1;
+            group.add(mouth);
+
+            // Pelo (frontal)
+            const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.7, emissive: new THREE.Color(hairColor).multiplyScalar(0.05) });
+            const hairGeo = new THREE.SphereGeometry(0.48, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+            const hair = new THREE.Mesh(hairGeo, hairMat);
+            hair.position.y = 1.35;
+            hair.scale.set(1, 0.6, 1.1);
+            hair.position.y = 1.50;
+            group.add(hair);
+
+            // Coleta izquierda
+            const tailGeo = new THREE.CylinderGeometry(0.08, 0.12, 0.4, 6);
+            const tailMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.7 });
+            const tailL = new THREE.Mesh(tailGeo, tailMat);
+            tailL.position.set(-0.35, 1.5, 0.1);
+            tailL.rotation.z = 0.3;
+            tailL.rotation.x = -0.2;
+            group.add(tailL);
+            const tailR = new THREE.Mesh(tailGeo, tailMat);
+            tailR.position.set(0.35, 1.5, 0.1);
+            tailR.rotation.z = -0.3;
+            tailR.rotation.x = -0.2;
+            group.add(tailR);
+
+            // Brazos (simples)
+            const armMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.5 });
+            const armGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.5, 6);
+            const armL = new THREE.Mesh(armGeo, armMat);
+            armL.position.set(-0.6, 0.9, 0);
+            armL.rotation.z = 0.2;
+            armL.castShadow = true;
+            group.add(armL);
+            const armR = new THREE.Mesh(armGeo, armMat);
+            armR.position.set(0.6, 0.9, 0);
+            armR.rotation.z = -0.2;
+            armR.castShadow = true;
+            group.add(armR);
+
+            // Piernas
+            const legMat = new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.6 });
+            const legGeo = new THREE.CylinderGeometry(0.1, 0.12, 0.4, 6);
+            const legL = new THREE.Mesh(legGeo, legMat);
+            legL.position.set(-0.2, 0.2, 0);
+            legL.castShadow = true;
+            group.add(legL);
+            const legR = new THREE.Mesh(legGeo, legMat);
+            legR.position.set(0.2, 0.2, 0);
+            legR.castShadow = true;
+            group.add(legR);
+
+            // Zapatos
+            const shoeMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            const shoeGeo = new THREE.SphereGeometry(0.1, 6, 6);
+            const shoeL = new THREE.Mesh(shoeGeo, shoeMat);
+            shoeL.position.set(-0.2, 0.0, 0.05);
+            shoeL.scale.set(1, 0.5, 1.2);
+            group.add(shoeL);
+            const shoeR = new THREE.Mesh(shoeGeo, shoeMat);
+            shoeR.position.set(0.2, 0.0, 0.05);
+            shoeR.scale.set(1, 0.5, 1.2);
+            group.add(shoeR);
+
+            // Falda (volante)
+            const skirtMat = new THREE.MeshStandardMaterial({ color, roughness: 0.5, emissive: new THREE.Color(color).multiplyScalar(0.05) });
+            const skirtGeo = new THREE.CylinderGeometry(0.65, 0.9, 0.3, 8);
+            const skirt = new THREE.Mesh(skirtGeo, skirtMat);
+            skirt.position.y = 0.35;
+            skirt.castShadow = true;
+            group.add(skirt);
+
+            // Brillo decorativo (estrella en la cabeza)
+            const starMat = new THREE.MeshStandardMaterial({
+                color: 0xffdd44,
+                emissive: 0xffaa00,
+                emissiveIntensity: 0.5,
+                transparent: true,
+                opacity: 0.8
+            });
+            const starGeo = new THREE.SphereGeometry(0.06, 6, 6);
+            const star = new THREE.Mesh(starGeo, starMat);
+            star.position.set(0, 1.8, 0.2);
+            group.add(star);
+
+            return group;
+        }
+
+        // --- Crear varias chicas anime con colores distintos ---
+        const girls = [];
+        const colors = [0xff69b4, 0x66ccff, 0x99ff99, 0xffaa88, 0xdd88ff];
+        const hairColors = [0xffaa00, 0xcc3366, 0x44aaff, 0xff6600, 0xaa44ff];
+        const names = ['Sakura', 'Miyuki', 'Yuki', 'Hinata', 'Aoi'];
+
+        const positions = [
+            [-2.5, 0, -2.5],
+            [2.5, 0, -2.5],
+            [0, 0, 0],
+            [-2.5, 0, 2.5],
+            [2.5, 0, 2.5]
+        ];
+
+        colors.forEach((color, i) => {
+            const girl = createAnimeGirl(color, hairColors[i]);
+            girl.position.set(positions[i][0], 0, positions[i][2]);
+            girl.userData = {
+                name: names[i],
+                targetPos: new THREE.Vector3(positions[i][0], 0, positions[i][2]),
+                speed: 0.02 + Math.random() * 0.02
+            };
+            scene.add(girl);
+            girls.push(girl);
+
+            // Etiqueta flotante (usando sprite)
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.roundRect(0, 0, 128, 64, 16);
+            ctx.fill();
+            ctx.font = 'bold 28px Arial';
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(names[i], 64, 32);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.position.set(0, 2.2, 0);
+            sprite.scale.set(1.2, 0.6, 1);
+            girl.add(sprite);
+        });
+
+        // --- Partículas decorativas (flotando) ---
+        const particleCount = 200;
+        const particleGeo = new THREE.BufferGeometry();
+        const particlePos = new Float32Array(particleCount * 3);
+        for (let i = 0; i < particleCount * 3; i++) {
+            particlePos[i] = (Math.random() - 0.5) * 20;
+            if (i % 3 === 1) particlePos[i] = Math.random() * 6 + 1; // altura
+        }
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+        const particleMat = new THREE.PointsMaterial({
+            color: 0xffaaff,
+            size: 0.08,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending
+        });
+        const particles = new THREE.Points(particleGeo, particleMat);
+        scene.add(particles);
+
+        // --- Raycaster para clics ---
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+
+        renderer.domElement.addEventListener('click', (event) => {
+            pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+            pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(pointer, camera);
+            const intersects = raycaster.intersectObject(ground);
+
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                // Todas las chicas van al punto
+                girls.forEach((girl, index) => {
+                    // Desfase para que no se amontonen
+                    const offsetX = (index - 2) * 0.5;
+                    const offsetZ = (index % 2 === 0 ? 1 : -1) * 0.3;
+                    girl.userData.targetPos.set(point.x + offsetX, 0, point.z + offsetZ);
+                });
+            }
+        });
+
+        // --- Animación ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Mover chicas hacia su objetivo
+            girls.forEach((girl) => {
+                const target = girl.userData.targetPos;
+                const dx = target.x - girl.position.x;
+                const dz = target.z - girl.position.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+                if (dist > 0.1) {
+                    const step = girl.userData.speed;
+                    girl.position.x += dx * step;
+                    girl.position.z += dz * step;
+                    // Mirar hacia donde se mueve
+                    const angle = Math.atan2(dx, dz);
+                    girl.rotation.y = angle;
+                }
+                // Pequeño rebote
+                girl.position.y = 0 + Math.sin(Date.now() * 0.003 + girls.indexOf(girl) * 2) * 0.02;
+            });
+
+            // Rotar partículas
+            particles.rotation.y += 0.001;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // --- Resize ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // roundRect polyfill para canvas
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+                this.moveTo(x + r, y);
+                this.arcTo(x + w, y, x + w, y + h, r);
+                this.arcTo(x + w, y + h, x, y + h, r);
+                this.arcTo(x, y + h, x, y, r);
+                this.arcTo(x, y, x + w, y, r);
+                return this;
+            };
+        }
+
+        console.log('🌸 Anime 3D cargado. Haz clic en el suelo para mover a las chicas.');
+    </script>
+</body>
+</html>
